@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+<title>Tiong &amp; Grace Project Familia</title>
+<style>
+  :root{
+    --label-w: 96px;
+    --row-h: 30px;
+    --axis-h: 28px;
+    --c-marriage:#d6477f;
+    --c-fertility:#1f9e8a;
+    --c-masters:#c08a2d;
+    --c-house:#3f6fd1;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100%; }
+  body{
+    font-family:-apple-system, Segoe UI, Roboto, sans-serif;
+    color:#1a1a1a; background:#fff;
+    display:flex; flex-direction:column; height:100vh;
+  }
+  header{ padding:12px 16px 8px; flex:0 0 auto; }
+  h1{ font-size:18px; margin:0 0 3px; line-height:1.2; }
+  p.hint{ color:#666; font-size:12px; margin:0; }
+
+  .wrap{
+    position:relative; flex:1 1 auto; overflow:auto;
+    border-top:1px solid #e2e2e2;
+    -webkit-overflow-scrolling:touch;
+  }
+  .chart{ position:relative; width:max-content; }
+
+  /* lanes */
+  .lane{ display:flex; }
+  .lane + .lane{ border-top:2px solid #e6e6e6; }
+  .lane-label{
+    position:sticky; left:0; z-index:5;
+    width:var(--label-w); flex:0 0 var(--label-w);
+    display:flex; align-items:center; justify-content:center; text-align:center;
+    font-weight:700; font-size:12px; color:#fff; padding:4px 5px;
+    box-shadow:1px 0 0 rgba(0,0,0,.08);
+  }
+  .lane-body{ position:relative; }
+
+  .task-row{ position:relative; height:var(--row-h); }
+  .task-row + .task-row{ border-top:1px dashed #efefef; }
+
+  .bar{
+    position:absolute; top:6px; height:calc(var(--row-h) - 12px);
+    border-radius:5px; opacity:.92;
+  }
+  .ms{
+    position:absolute; top:50%; width:12px; height:12px;
+    transform:translate(-50%,-50%) rotate(45deg);
+    border-radius:2px; border:1.5px solid rgba(255,255,255,.85);
+  }
+  .lbl{
+    position:absolute; top:50%; transform:translateY(-50%);
+    font-size:11px; line-height:1; white-space:nowrap; color:#2a2a2a;
+    pointer-events:none; max-width:520px; overflow:hidden; text-overflow:ellipsis;
+  }
+  .lbl-in{ color:#fff; font-weight:600; }
+
+  .gridline{ position:absolute; top:0; bottom:0; width:1px; background:#f0f0f0; }
+  .gridline.q{ background:#e3e3e3; }
+  .today-line{ position:absolute; top:0; bottom:0; width:3px; background:#e60000; opacity:.9; z-index:3; cursor:ew-resize; touch-action:none; }
+  .today-line::before{ content:""; position:absolute; top:0; bottom:0; left:-7px; right:-7px; }
+  .today-lbl{
+    position:absolute; top:3px; transform:translateX(-50%); z-index:6;
+    color:#e60000; font-weight:700; font-size:12px; white-space:nowrap;
+    background:rgba(255,255,255,.88); padding:1px 5px; border-radius:4px;
+    border:1px solid rgba(230,0,0,.35);
+    cursor:grab; touch-action:none; user-select:none;
+  }
+  .today-lbl:active{ cursor:grabbing; }
+
+  .reset-btn{
+    margin-top:6px; font:inherit; font-size:12px; font-weight:600;
+    color:#e60000; background:#fff; border:1px solid rgba(230,0,0,.45);
+    border-radius:5px; padding:3px 10px; cursor:pointer;
+  }
+  .reset-btn:hover{ background:#fff0f0; }
+  .reset-btn:disabled{ color:#999; border-color:#ddd; cursor:default; background:#fafafa; }
+
+  /* sticky bottom axis */
+  .axis{ position:sticky; bottom:0; z-index:10; display:flex; }
+  .axis-spacer{
+    position:sticky; left:0; z-index:11;
+    width:var(--label-w); flex:0 0 var(--label-w);
+    background:#fff; border-top:1px solid #cfcfcf; border-right:1px solid #e2e2e2;
+    box-shadow:1px 0 0 rgba(0,0,0,.08);
+  }
+  .axis-track{
+    position:relative; height:var(--axis-h);
+    background:#fff; border-top:1px solid #cfcfcf;
+  }
+  .tick{ position:absolute; top:0; bottom:0; border-left:1px solid #e0e0e0; }
+  .tick.q{ border-left:1px solid #c7c7c7; }
+  .tick span{ position:absolute; top:7px; left:4px; font-size:10px; color:#555; white-space:nowrap; }
+
+  @media (max-width:600px){
+    :root{ --label-w:62px; --row-h:28px; }
+    h1{ font-size:15px; }
+    .lane-label{ font-size:11px; padding:3px 2px; }
+    .lbl{ font-size:10px; }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Tiong &amp; Grace Project Familia</h1>
+    <p class="hint">Scroll any direction — track labels stay pinned left, the month axis stays pinned at the bottom. Pinch/Ctrl&nbsp;+&minus; to zoom. Drag the red line to read off any date.</p>
+    <button id="resetToday" class="reset-btn" type="button">Reset to today</button>
+  </header>
+  <div class="wrap" id="wrap"></div>
+
+<script>
+  // ---- Data (mirrors the Mermaid source; edit here to change the chart) ----
+  // Each task: {sec, name, start, and one of: milestone:true | dur:<days> | end:'YYYY-MM-DD'}
+  const SECTIONS = [
+    { key:'Marriage',  color:'var(--c-marriage)' },
+    { key:'Fertility', color:'var(--c-fertility)' },
+    { key:'Masters',   color:'var(--c-masters)' },
+    { key:'House',     color:'var(--c-house)' },
+  ];
+  const COLOR = { Marriage:'#d6477f', Fertility:'#1f9e8a', Masters:'#c08a2d', House:'#3f6fd1' };
+
+  const TASKS = [
+    // Marriage
+    { sec:'Marriage', name:'Ring & proposal research', start:'2026-06-01', dur:153 },
+    { sec:'Marriage', name:'Plan proposal', start:'2026-06-01', dur:228 },
+    { sec:'Marriage', name:'Commission semi-custom ring', start:'2026-11-01', dur:75 },
+    { sec:'Marriage', name:'Propose (mid-Jan, sem break)', start:'2027-01-15', milestone:true },
+    { sec:'Marriage', name:'JPN notice + 21-day wait', start:'2027-01-15', dur:55 },
+    { sec:'Marriage', name:'ROM — legally married', start:'2027-03-11', milestone:true },
+    // Fertility
+    { sec:'Fertility', name:'HRT doctor appointment', start:'2026-08-08', milestone:true },
+    { sec:'Fertility', name:'Baseline semen analysis', start:'2026-08-08', milestone:true },
+    { sec:'Fertility', name:'Switch to hCG/clomiphene', start:'2026-08-08', dur:14 },
+    { sec:'Fertility', name:'Fertility recovery (3–6 mo)', start:'2026-08-22', dur:150 },
+    { sec:'Fertility', name:'Sperm check 1 — 3mo (early warning)', start:'2026-11-15', milestone:true },
+    { sec:'Fertility', name:'Sperm check 2 — 6mo (confirm)', start:'2027-02-15', milestone:true },
+    { sec:'Fertility', name:'Married — settle 2 mo', start:'2027-03-11', dur:60 },
+    { sec:'Fertility', name:'Couple fertility checkup', start:'2027-04-15', milestone:true },
+    { sec:'Fertility', name:'Start trying (2 mo after ROM)', start:'2027-05-11', milestone:true },
+    { sec:'Fertility', name:'Conception (avg band)', start:'2027-05-20', dur:120 },
+    { sec:'Fertility', name:'Pregnancy', start:'2027-08-01', dur:270 },
+    { sec:'Fertility', name:'First child born', start:'2028-05-01', milestone:true },
+    // Masters
+    { sec:'Masters', name:'Thesis data collection + write (front-load Jun–Aug)', start:'2026-07-01', dur:365 },
+    { sec:'Masters', name:'Indirect event 1 — MH activity, high-schoolers (IMU)', start:'2026-07-06', milestone:true },
+    { sec:'Masters', name:'Indirect event 2 — MH screening, public (Dewan Komuniti OUG)', start:'2026-08-01', milestone:true },
+    { sec:'Masters', name:'Sem 3', start:'2026-08-11', end:'2026-12-22' },
+    { sec:'Masters', name:'Practicum (252 hrs, full-time Mon–Fri)', start:'2026-08-17', end:'2026-12-12' },
+    { sec:'Masters', name:'Group counselling (~15 sessions, 30 hrs direct, weekly)', start:'2026-08-31', end:'2026-12-12' },
+    { sec:'Masters', name:'Sem 4', start:'2027-02-04', end:'2027-06-12' },
+    { sec:'Masters', name:'Thesis write-up + analysis', start:'2027-04-01', dur:150 },
+    { sec:'Masters', name:'Thesis submission', start:'2027-08-15', milestone:true },
+    { sec:'Masters', name:'Viva + corrections', start:'2027-09-01', dur:60 },
+    { sec:'Masters', name:'Degree conferred', start:'2027-11-15', milestone:true },
+    // House (Syarawi S1–S4 flow)
+    { sec:'House', name:'Ideal house audit — dispose/store/keep (Sat–Sun)', start:'2026-06-27', dur:2 },
+    { sec:'House', name:'Latest house audit — backstop (Sat–Sun)', start:'2026-07-18', dur:2 },
+    { sec:'House', name:'Move out to rental (planned)', start:'2026-07-20', milestone:true },
+    { sec:'House', name:'S1 Design — architect search + appoint', start:'2026-07-01', dur:31 },
+    { sec:'House', name:'Finalize architect (latest)', start:'2026-08-01', milestone:true },
+    { sec:'House', name:'S1 Design — schematic layout + 3D views', start:'2026-08-01', dur:61 },
+    { sec:'House', name:'Design confirmed', start:'2026-10-01', milestone:true },
+    { sec:'House', name:'S2 Submissions — BP + Planning (3mo base; 1–18mo risk)', start:'2026-09-01', dur:90 },
+    { sec:'House', name:'Approvals obtained (CCC track)', start:'2026-11-30', milestone:true },
+    { sec:'House', name:'S3 Tendering — costings + select contractor', start:'2026-10-01', dur:61 },
+    { sec:'House', name:'Contractor appointed', start:'2026-12-01', milestone:true },
+    { sec:'House', name:'Latest full move-out (pre-reno)', start:'2026-11-01', milestone:true },
+    { sec:'House', name:'S4 Building — construction to CCC', start:'2026-12-01', dur:255 },
+    { sec:'House', name:'CCC issued — Cert of Completion + Compliance', start:'2027-08-15', milestone:true },
+    { sec:'House', name:'Post-CCC clean + furnish + fit-out', start:'2027-08-15', dur:61 },
+    { sec:'House', name:'Move into renovated house (settle slowly)', start:'2027-10-15', milestone:true },
+  ];
+
+  // ---- Time scale ----
+  const DAY = 86400000;
+  const PX_PER_DAY = 3.2;
+  const toMs = s => { const [y,m,d] = s.split('-').map(Number); return Date.UTC(y, m-1, d); };
+  function span(t){
+    const s = toMs(t.start);
+    let e = s;
+    if (t.milestone) e = s;
+    else if (t.dur != null) e = s + t.dur*DAY;
+    else if (t.end) e = toMs(t.end);
+    return [s, e];
+  }
+  let minMs = Infinity, maxMs = -Infinity;
+  TASKS.forEach(t => { const [s,e] = span(t); if (s<minMs) minMs=s; if (e>maxMs) maxMs=e; });
+  const lo = new Date(minMs), hi = new Date(maxMs);
+  const START = Date.UTC(lo.getUTCFullYear(), lo.getUTCMonth(), 1);
+  const END   = Date.UTC(hi.getUTCFullYear(), hi.getUTCMonth()+1, 1);
+  const TL_W  = Math.round((END-START)/DAY * PX_PER_DAY);
+  const xpx = ms => ((ms-START)/DAY) * PX_PER_DAY;
+  const FLIP = TL_W * 0.72; // past this, draw outside labels to the LEFT
+
+  // month ticks
+  const MONTHS = [];
+  for (let y=lo.getUTCFullYear(), m=lo.getUTCMonth(); ; ){
+    const ms = Date.UTC(y, m, 1);
+    if (ms >= END) break;
+    const dt = new Date(ms);
+    MONTHS.push({
+      x: xpx(ms),
+      label: dt.toLocaleDateString('en-GB',{month:'short',year:'2-digit'}),
+      jan: m === 0
+    });
+    m++; if (m>11){ m=0; y++; }
+  }
+
+  // today
+  const now = new Date();
+  const todayMs = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayX = (todayMs>=START && todayMs<END) ? xpx(todayMs) : null;
+  const todayLabel = 'Today – ' + now.toLocaleDateString('en-GB',
+    { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
+
+  // ---- Build DOM ----
+  const wrap = document.getElementById('wrap');
+  const chart = document.createElement('div');
+  chart.className = 'chart';
+  chart.style.width = (parseFloat(getLabelW()) + TL_W) + 'px';
+
+  function getLabelW(){
+    return getComputedStyle(document.documentElement).getPropertyValue('--label-w').trim() || '96px';
+  }
+
+  let firstBody = null;
+  const todayLines = [];
+  SECTIONS.forEach(sec => {
+    const rows = TASKS.filter(t => t.sec === sec.key);
+    if (!rows.length) return;
+    const lane = document.createElement('div'); lane.className = 'lane';
+
+    const label = document.createElement('div');
+    label.className = 'lane-label';
+    label.style.background = COLOR[sec.key];
+    label.textContent = sec.key;
+    lane.appendChild(label);
+
+    const body = document.createElement('div');
+    body.className = 'lane-body';
+    body.style.width = TL_W + 'px';
+    if (!firstBody) firstBody = body;
+
+    // gridlines
+    MONTHS.forEach(mo => {
+      const g = document.createElement('div');
+      g.className = 'gridline' + (mo.jan ? ' q' : '');
+      g.style.left = mo.x + 'px';
+      body.appendChild(g);
+    });
+    // today line
+    if (todayX != null){
+      const tl = document.createElement('div');
+      tl.className = 'today-line';
+      tl.style.left = (todayX - 1.5) + 'px';
+      body.appendChild(tl);
+      todayLines.push(tl);
+    }
+
+    rows.forEach(t => {
+      const row = document.createElement('div'); row.className = 'task-row';
+      const [s,e] = span(t);
+      const x = xpx(s);
+      if (t.milestone){
+        const m = document.createElement('div'); m.className = 'ms';
+        m.style.left = x + 'px'; m.style.background = COLOR[sec.key];
+        row.appendChild(m);
+        addLabel(row, t.name, x, x > FLIP ? 'left' : 'right');
+      } else {
+        const w = Math.max(xpx(e) - x, 3);
+        const bar = document.createElement('div'); bar.className = 'bar';
+        bar.style.left = x + 'px'; bar.style.width = w + 'px';
+        bar.style.background = COLOR[sec.key];
+        bar.title = t.name;
+        row.appendChild(bar);
+        const right = x + w;
+        if (w >= 64) addLabel(row, t.name, x, 'in');
+        else if (right > FLIP) addLabel(row, t.name, x, 'left');
+        else addLabel(row, t.name, right, 'right');
+      }
+      body.appendChild(row);
+    });
+
+    lane.appendChild(body);
+    chart.appendChild(lane);
+  });
+
+  // today label (once, on the first lane body so it sits at the top)
+  let todayLabelEl = null;
+  if (todayX != null && firstBody){
+    todayLabelEl = document.createElement('div');
+    todayLabelEl.className = 'today-lbl';
+    todayLabelEl.style.left = todayX + 'px';
+    todayLabelEl.textContent = todayLabel;
+    firstBody.appendChild(todayLabelEl);
+  }
+
+  // axis (sticky bottom)
+  const axis = document.createElement('div'); axis.className = 'axis';
+  const spacer = document.createElement('div'); spacer.className = 'axis-spacer';
+  const track = document.createElement('div'); track.className = 'axis-track';
+  track.style.width = TL_W + 'px';
+  MONTHS.forEach(mo => {
+    const tk = document.createElement('div');
+    tk.className = 'tick' + (mo.jan ? ' q' : '');
+    tk.style.left = mo.x + 'px';
+    const sp = document.createElement('span'); sp.textContent = mo.label;
+    tk.appendChild(sp);
+    track.appendChild(tk);
+  });
+  axis.appendChild(spacer); axis.appendChild(track);
+  chart.appendChild(axis);
+
+  wrap.appendChild(chart);
+
+  // ---- Draggable red line: read off any date, reset back to today ----
+  if (todayX != null){
+    const msFromX = x => START + Math.round(x / PX_PER_DAY) * DAY;
+    const fmtDate = ms => new Date(ms).toLocaleDateString('en-GB',
+      { weekday:'short', day:'2-digit', month:'short', year:'numeric', timeZone:'UTC' });
+
+    const resetBtn = document.getElementById('resetToday');
+    let currentX = todayX;
+
+    function setMarker(centerX, asToday){
+      centerX = Math.max(0, Math.min(TL_W, centerX));
+      currentX = centerX;
+      todayLines.forEach(l => l.style.left = (centerX - 1.5) + 'px');
+      if (todayLabelEl){
+        todayLabelEl.style.left = centerX + 'px';
+        todayLabelEl.textContent = asToday
+          ? todayLabel
+          : 'Marker – ' + fmtDate(msFromX(centerX));
+      }
+      if (resetBtn) resetBtn.disabled = asToday;
+    }
+
+    let startClientX = 0, startX = 0;
+    function onMove(e){ setMarker(startX + (e.clientX - startClientX), false); }
+    function onUp(){
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    }
+    function onDown(e){
+      startClientX = e.clientX;
+      startX = currentX;
+      e.preventDefault();
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+    }
+
+    todayLines.forEach(l => l.addEventListener('pointerdown', onDown));
+    if (todayLabelEl) todayLabelEl.addEventListener('pointerdown', onDown);
+    if (resetBtn){
+      resetBtn.disabled = true;
+      resetBtn.addEventListener('click', () => setMarker(todayX, true));
+    }
+  }
+
+  function addLabel(row, text, anchorPx, side){
+    const l = document.createElement('div');
+    l.className = 'lbl' + (side === 'in' ? ' lbl-in' : '');
+    l.textContent = text;
+    if (side === 'left'){
+      l.style.right = (TL_W - anchorPx + 8) + 'px';
+      l.style.textAlign = 'right';
+    } else {
+      l.style.left = (anchorPx + (side === 'in' ? 6 : 8)) + 'px';
+    }
+    row.appendChild(l);
+  }
+</script>
+</body>
+</html>

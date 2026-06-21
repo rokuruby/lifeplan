@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
-<title>Tiong &amp; Grace Project Familia v5</title>
+<title>Tiong &amp; Grace Project Familia v7</title>
 <style>
   :root{
     --label-w: 96px;
@@ -110,9 +110,21 @@
 </head>
 <body>
   <header>
-    <h1>Tiong &amp; Grace Project Familia v5</h1>
-    <p class="hint">Scroll any direction — track labels stay pinned left, the month axis stays pinned at the bottom. Pinch/Ctrl&nbsp;+&minus; to zoom. Drag the red line to read off any date.</p>
+    <h1>Tiong &amp; Grace Project Familia v7</h1>
+    <p class="hint">Scroll any direction — track labels stay pinned left, the month axis stays pinned at the bottom. Use the Zoom +/&minus; buttons (or pinch/Ctrl&nbsp;+&minus;) to spread out the timeline. Drag the red line to read off any date.</p>
     <button id="resetToday" class="reset-btn" type="button">Reset to today</button>
+    <span style="margin-left:12px; font-size:12px; font-weight:600;">Masters scenario:</span>
+    <select id="scenario" style="font:inherit; font-size:12px; font-weight:600; padding:3px 8px; border-radius:5px; border:1px solid #bbb; margin-left:4px;">
+      <option value="base">Baseline — both full-time</option>
+      <option value="s1">1 — S3 &amp; S4 part-time (+2 sems)</option>
+      <option value="s2">2 — S3 full, S4 part-time (+1 sem)</option>
+      <option value="s3">3 — S3 full, S4 deferred → full-time</option>
+      <option value="s4">4 — S3 full, defer → PT + extra PT S5</option>
+    </select>
+    <span style="margin-left:12px; font-size:12px; font-weight:600;">Zoom:</span>
+    <button id="zoomOut" type="button" style="font:inherit; font-size:13px; font-weight:700; padding:2px 9px; border-radius:5px; border:1px solid #bbb; background:#fff; cursor:pointer; margin-left:4px;">&minus;</button>
+    <button id="zoomIn" type="button" style="font:inherit; font-size:13px; font-weight:700; padding:2px 9px; border-radius:5px; border:1px solid #bbb; background:#fff; cursor:pointer; margin-left:4px;">+</button>
+    <button id="zoomReset" type="button" style="font:inherit; font-size:12px; font-weight:600; padding:2px 9px; border-radius:5px; border:1px solid #bbb; background:#fff; cursor:pointer; margin-left:4px;">Default</button>
   </header>
   <div class="wrap" id="wrap"></div>
 
@@ -121,45 +133,35 @@
   // Each task: {sec, name, start, and one of: milestone:true | dur:<days> | end:'YYYY-MM-DD'}
   const SECTIONS = [
     { key:'Marriage',  color:'var(--c-marriage)' },
-    { key:'Fertility', color:'var(--c-fertility)' },
+    { key:'Pregnancy', color:'var(--c-fertility)' },
     { key:'Masters',   color:'var(--c-masters)' },
     { key:'House',     color:'var(--c-house)' },
   ];
-  const COLOR = { Marriage:'#d6477f', Fertility:'#1f9e8a', Masters:'#c08a2d', House:'#3f6fd1' };
+  const COLOR = { Marriage:'#d6477f', Pregnancy:'#1f9e8a', Masters:'#c08a2d', House:'#3f6fd1' };
 
-  const TASKS = [
-    // Marriage
-    { sec:'Marriage', name:'Ring & proposal research', start:'2026-06-01', dur:153 },
-    { sec:'Marriage', name:'Plan proposal', start:'2026-06-01', dur:228 },
-    { sec:'Marriage', name:'Commission semi-custom ring', start:'2026-11-01', dur:75 },
-    { sec:'Marriage', name:'Propose (mid-Jan, sem break)', start:'2027-01-15', milestone:true },
-    { sec:'Marriage', name:'JPN notice + 21-day wait', start:'2027-01-15', dur:55 },
-    { sec:'Marriage', name:'ROM — legally married', start:'2027-03-11', milestone:true },
-    // Fertility
-    { sec:'Fertility', name:'HRT doctor appointment', start:'2026-08-08', milestone:true },
-    { sec:'Fertility', name:'Baseline semen analysis', start:'2026-08-08', milestone:true },
-    { sec:'Fertility', name:'Switch to hCG/clomiphene', start:'2026-08-08', dur:14 },
-    { sec:'Fertility', name:'Fertility recovery (3–6 mo)', start:'2026-08-22', dur:150 },
-    { sec:'Fertility', name:'Sperm check 1 — 3mo (early warning)', start:'2026-11-15', milestone:true },
-    { sec:'Fertility', name:'Sperm check 2 — 6mo (confirm)', start:'2027-02-15', milestone:true },
-    { sec:'Fertility', name:'Married — settle 2 mo', start:'2027-03-11', dur:60 },
-    { sec:'Fertility', name:'Couple fertility checkup', start:'2027-04-15', milestone:true },
-    { sec:'Fertility', name:'Start trying (2 mo after ROM)', start:'2027-05-11', milestone:true },
-    { sec:'Fertility', name:'Conception (avg band)', start:'2027-05-20', dur:120 },
-    { sec:'Fertility', name:'Pregnancy', start:'2027-08-01', dur:270 },
-    { sec:'Fertility', name:'First child born', start:'2028-05-01', milestone:true },
-    // Masters
-    { sec:'Masters', name:'Thesis data collection + write (front-load Jun–Aug)', start:'2026-07-01', dur:365 },
-    { sec:'Masters', name:'Indirect event 1 — MH activity, high-schoolers (IMU)', start:'2026-07-06', milestone:true },
-    { sec:'Masters', name:'Indirect event 2 — MH screening, public (Dewan Komuniti OUG)', start:'2026-08-01', milestone:true },
-    { sec:'Masters', name:'Sem 3', start:'2026-08-11', end:'2026-12-22' },
-    { sec:'Masters', name:'Practicum (252 hrs, full-time Mon–Fri)', start:'2026-08-17', end:'2026-12-12' },
-    { sec:'Masters', name:'Group counselling (~15 sessions, 30 hrs direct, weekly)', start:'2026-08-31', end:'2026-12-12' },
-    { sec:'Masters', name:'Sem 4', start:'2027-02-04', end:'2027-06-12' },
-    { sec:'Masters', name:'Thesis write-up + analysis', start:'2027-04-01', dur:150 },
-    { sec:'Masters', name:'Thesis submission', start:'2027-08-15', milestone:true },
-    { sec:'Masters', name:'Viva + corrections', start:'2027-09-01', dur:60 },
-    { sec:'Masters', name:'Degree conferred', start:'2027-11-15', milestone:true },
+  const BASE_TASKS = [
+    // Marriage (accelerated — pregnancy; ROM Sat 18 Jul 2026)
+    { sec:'Marriage', name:'Gordon Max — affordable rings + order gold-bar dowry (Tue)', start:'2026-06-23', milestone:true },
+    { sec:'Marriage', name:'JPN notice lodged (by Fri 26 Jun → 22-day wait)', start:'2026-06-26', milestone:true },
+    { sec:'Marriage', name:'JPN 22-day notice wait', start:'2026-06-26', dur:22 },
+    { sec:'Marriage', name:'Plan luncheon — venue + guest list', start:'2026-06-28', dur:18 },
+    { sec:'Marriage', name:"Tell Grace's parents (Sat)", start:'2026-07-04', milestone:true },
+    { sec:'Marriage', name:'Hire wedding photographer', start:'2026-07-06', milestone:true },
+    { sec:'Marriage', name:'Ring shopping (tentative) — Taman Perdana, bring tripod', start:'2026-07-11', milestone:true },
+    { sec:'Marriage', name:'Both-families dinner (Sat eve)', start:'2026-07-11', milestone:true },
+    { sec:'Marriage', name:'Tell + invite my friends (Sun)', start:'2026-07-12', milestone:true },
+    { sec:'Marriage', name:'ROM + intimate luncheon — legally married', start:'2026-07-18', milestone:true },
+    // Pregnancy (conceived ~2–3 Jun 2026; EDD ~24 Feb 2027)
+    { sec:'Pregnancy', name:'Pregnancy (conceived ~2–3 Jun)', start:'2026-06-03', dur:266 },
+    { sec:'Pregnancy', name:'First OB-gyn visit + dating scan (Pantai)', start:'2026-06-27', milestone:true },
+    { sec:'Pregnancy', name:'Tour + book confinement centre', start:'2026-07-01', dur:30 },
+    { sec:'Pregnancy', name:'First-trimester screening (NT scan, ~wk 12)', start:'2026-08-08', milestone:true },
+    { sec:'Pregnancy', name:'End first trimester (~wk 13)', start:'2026-08-19', milestone:true },
+    { sec:'Pregnancy', name:'Detailed anatomy scan (~wk 20)', start:'2026-10-07', milestone:true },
+    { sec:'Pregnancy', name:'Glucose tolerance test (~wk 26)', start:'2026-11-15', milestone:true },
+    { sec:'Pregnancy', name:'Third trimester (~wk 28)', start:'2026-12-02', dur:84 },
+    { sec:'Pregnancy', name:'First child born (EDD)', start:'2027-02-24', milestone:true },
+    { sec:'Pregnancy', name:'Confinement (~40 days)', start:'2027-02-24', dur:40 },
     // House (Syarawi S1–S4 flow)
     { sec:'House', name:'Ideal house audit — dispose/store/keep (Sat–Sun)', start:'2026-06-27', dur:2 },
     { sec:'House', name:'Latest house audit — backstop (Sat–Sun)', start:'2026-07-18', dur:2 },
@@ -179,9 +181,74 @@
     { sec:'House', name:'Move into renovated house (settle slowly)', start:'2027-10-15', milestone:true },
   ];
 
+  // ---- Masters: tasks constant across all scenarios (events + thesis chain) ----
+  const MASTERS_COMMON = [
+    { sec:'Masters', name:'Indirect event 1 — MH activity (IMU)', start:'2026-07-06', milestone:true },
+    { sec:'Masters', name:'Indirect event 2 — MH screening (OUG)', start:'2026-08-01', milestone:true },
+    { sec:'Masters', name:'Thesis data collection + write (front-load)', start:'2026-07-01', dur:365 },
+    { sec:'Masters', name:'Thesis write-up + analysis', start:'2027-04-01', dur:150 },
+    { sec:'Masters', name:'Thesis submission (on track — may slip)', start:'2027-08-15', milestone:true },
+    { sec:'Masters', name:'Viva + corrections', start:'2027-09-01', dur:60 },
+  ];
+
+  // ---- Masters: per-scenario coursework (switch via the dropdown) ----
+  const SCENARIOS = [
+    { key:'base', label:'Baseline — both semesters full-time (finish ~Nov 2027)', masters:[
+      { sec:'Masters', name:'Sem 3 (full-time)', start:'2026-08-11', end:'2026-12-22' },
+      { sec:'Masters', name:'Practicum (252 hrs FT — done before baby)', start:'2026-08-17', end:'2026-12-12' },
+      { sec:'Masters', name:'Group counselling (~15 sessions, weekly)', start:'2026-08-31', end:'2026-12-12' },
+      { sec:'Masters', name:'Sem 4 (full-time — clashes with birth)', start:'2027-02-04', end:'2027-06-12' },
+      { sec:'Masters', name:'Degree conferred', start:'2027-11-15', milestone:true },
+    ]},
+    { key:'s1', label:'1 — S3 & S4 part-time, +2 sems (finish ~late 2028)', masters:[
+      { sec:'Masters', name:'Sem 3a (part-time)', start:'2026-08-11', end:'2026-12-22' },
+      { sec:'Masters', name:'Sem 3b (part-time)', start:'2027-02-04', end:'2027-06-12' },
+      { sec:'Masters', name:'Practicum (PT — stretched, overlaps birth)', start:'2026-08-17', end:'2027-06-12' },
+      { sec:'Masters', name:'Group counselling (PT — stretched)', start:'2026-08-31', end:'2027-06-12' },
+      { sec:'Masters', name:'Sem 4a (part-time)', start:'2027-08-11', end:'2027-12-22' },
+      { sec:'Masters', name:'Sem 4b (part-time)', start:'2028-02-04', end:'2028-06-12' },
+      { sec:'Masters', name:'Degree conferred', start:'2028-11-15', milestone:true },
+    ]},
+    { key:'s2', label:'2 — S3 full-time, S4 part-time, +1 sem (finish ~Mar 2028)', masters:[
+      { sec:'Masters', name:'Sem 3 (full-time)', start:'2026-08-11', end:'2026-12-22' },
+      { sec:'Masters', name:'Practicum (252 hrs FT — done before baby)', start:'2026-08-17', end:'2026-12-12' },
+      { sec:'Masters', name:'Group counselling (~15 sessions, weekly)', start:'2026-08-31', end:'2026-12-12' },
+      { sec:'Masters', name:'Sem 4a (part-time, half-load)', start:'2027-02-04', end:'2027-06-12' },
+      { sec:'Masters', name:'Sem 4b (part-time)', start:'2027-08-11', end:'2027-12-22' },
+      { sec:'Masters', name:'Degree conferred', start:'2028-03-15', milestone:true },
+    ]},
+    { key:'s3', label:'3 — S3 full-time, S4 deferred → full-time (finish ~Mar 2028)', masters:[
+      { sec:'Masters', name:'Sem 3 (full-time)', start:'2026-08-11', end:'2026-12-22' },
+      { sec:'Masters', name:'Practicum (252 hrs FT — done before baby)', start:'2026-08-17', end:'2026-12-12' },
+      { sec:'Masters', name:'Group counselling (~15 sessions, weekly)', start:'2026-08-31', end:'2026-12-12' },
+      { sec:'Masters', name:'S4 deferred — baby focus (no study)', start:'2027-02-04', end:'2027-08-10' },
+      { sec:'Masters', name:'Sem 4 (full-time, resumed Aug)', start:'2027-08-11', end:'2027-12-22' },
+      { sec:'Masters', name:'Degree conferred', start:'2028-03-15', milestone:true },
+    ]},
+    { key:'s4', label:'4 — S3 full, S4 deferred → PT + extra PT S5 (finish ~late 2028)', masters:[
+      { sec:'Masters', name:'Sem 3 (full-time)', start:'2026-08-11', end:'2026-12-22' },
+      { sec:'Masters', name:'Practicum (252 hrs FT — done before baby)', start:'2026-08-17', end:'2026-12-12' },
+      { sec:'Masters', name:'Group counselling (~15 sessions, weekly)', start:'2026-08-31', end:'2026-12-12' },
+      { sec:'Masters', name:'S4 deferred — baby focus (no study)', start:'2027-02-04', end:'2027-08-10' },
+      { sec:'Masters', name:'Sem 4 (part-time, resumed Aug)', start:'2027-08-11', end:'2027-12-22' },
+      { sec:'Masters', name:'Sem 5 (part-time)', start:'2028-02-04', end:'2028-06-12' },
+      { sec:'Masters', name:'Degree conferred', start:'2028-11-15', milestone:true },
+    ]},
+  ];
+
+  let CURRENT_SCENARIO = 'base';
+  const scenarioTasks = key => {
+    const sc = SCENARIOS.find(s => s.key === key) || SCENARIOS[0];
+    return BASE_TASKS.concat(MASTERS_COMMON, sc.masters);
+  };
+  // every task across every scenario — used to fix a stable time axis so the chart doesn't jump on switch
+  const ALL_TASKS = BASE_TASKS.concat(MASTERS_COMMON, ...SCENARIOS.map(s => s.masters));
+
   // ---- Time scale ----
   const DAY = 86400000;
-  const PX_PER_DAY = 3.2;
+  const PX_DEFAULT = 3.2;
+  let PX_PER_DAY = PX_DEFAULT;
+  const PX_MIN = 1.4, PX_MAX = 18;
   const toMs = s => { const [y,m,d] = s.split('-').map(Number); return Date.UTC(y, m-1, d); };
   function span(t){
     const s = toMs(t.start);
@@ -192,44 +259,52 @@
     return [s, e];
   }
   let minMs = Infinity, maxMs = -Infinity;
-  TASKS.forEach(t => { const [s,e] = span(t); if (s<minMs) minMs=s; if (e>maxMs) maxMs=e; });
+  ALL_TASKS.forEach(t => { const [s,e] = span(t); if (s<minMs) minMs=s; if (e>maxMs) maxMs=e; });
   const lo = new Date(minMs), hi = new Date(maxMs);
   const START = Date.UTC(lo.getUTCFullYear(), lo.getUTCMonth(), 1);
   const END   = Date.UTC(hi.getUTCFullYear(), hi.getUTCMonth()+1, 1);
-  const TL_W  = Math.round((END-START)/DAY * PX_PER_DAY);
-  const xpx = ms => ((ms-START)/DAY) * PX_PER_DAY;
-  const FLIP = TL_W * 0.72; // past this, draw outside labels to the LEFT
-
-  // month ticks
-  const MONTHS = [];
-  for (let y=lo.getUTCFullYear(), m=lo.getUTCMonth(); ; ){
-    const ms = Date.UTC(y, m, 1);
-    if (ms >= END) break;
-    const dt = new Date(ms);
-    MONTHS.push({
-      x: xpx(ms),
-      label: dt.toLocaleDateString('en-GB',{month:'short',year:'2-digit'}),
-      jan: m === 0
-    });
-    m++; if (m>11){ m=0; y++; }
-  }
-
-  // today
+  // today (date only — independent of zoom)
   const now = new Date();
   const todayMs = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-  const todayX = (todayMs>=START && todayMs<END) ? xpx(todayMs) : null;
+
+  // zoom-dependent scale — recomputed by computeScale() whenever PX_PER_DAY changes
+  let TL_W, FLIP, MONTHS, todayX;
+  let xpx = ms => ((ms-START)/DAY) * PX_PER_DAY;
+  function computeScale(){
+    xpx = ms => ((ms-START)/DAY) * PX_PER_DAY;
+    TL_W = Math.round((END-START)/DAY * PX_PER_DAY);
+    FLIP = TL_W * 0.72; // past this, draw outside labels to the LEFT
+    MONTHS = [];
+    for (let y=lo.getUTCFullYear(), m=lo.getUTCMonth(); ; ){
+      const ms = Date.UTC(y, m, 1);
+      if (ms >= END) break;
+      const dt = new Date(ms);
+      MONTHS.push({
+        x: xpx(ms),
+        label: dt.toLocaleDateString('en-GB',{month:'short',year:'2-digit'}),
+        jan: m === 0
+      });
+      m++; if (m>11){ m=0; y++; }
+    }
+    todayX = (todayMs>=START && todayMs<END) ? xpx(todayMs) : null;
+  }
   const todayLabel = 'Today – ' + now.toLocaleDateString('en-GB',
     { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
 
   // ---- Build DOM ----
   const wrap = document.getElementById('wrap');
-  const chart = document.createElement('div');
-  chart.className = 'chart';
-  chart.style.width = (parseFloat(getLabelW()) + TL_W) + 'px';
 
   function getLabelW(){
     return getComputedStyle(document.documentElement).getPropertyValue('--label-w').trim() || '96px';
   }
+
+  function render(){
+  computeScale();
+  wrap.innerHTML = '';
+  const TASKS = scenarioTasks(CURRENT_SCENARIO);
+  const chart = document.createElement('div');
+  chart.className = 'chart';
+  chart.style.width = (parseFloat(getLabelW()) + TL_W) + 'px';
 
   let firstBody = null;
   const todayLines = [];
@@ -364,6 +439,25 @@
       resetBtn.addEventListener('click', () => setMarker(todayX, true));
     }
   }
+  }  // end render()
+
+  render();
+  const scenarioSel = document.getElementById('scenario');
+  if (scenarioSel){
+    scenarioSel.value = CURRENT_SCENARIO;
+    scenarioSel.addEventListener('change', () => { CURRENT_SCENARIO = scenarioSel.value; render(); });
+  }
+
+  // ---- Zoom: rescale px/day and re-render, keeping the viewport centre fixed ----
+  function setZoom(px){
+    const frac = wrap.scrollWidth ? (wrap.scrollLeft + wrap.clientWidth/2) / wrap.scrollWidth : 0;
+    PX_PER_DAY = Math.max(PX_MIN, Math.min(PX_MAX, px));
+    render();
+    wrap.scrollLeft = Math.max(0, frac * wrap.scrollWidth - wrap.clientWidth/2);
+  }
+  const zi = document.getElementById('zoomIn');    if (zi) zi.addEventListener('click', () => setZoom(PX_PER_DAY * 1.3));
+  const zo = document.getElementById('zoomOut');   if (zo) zo.addEventListener('click', () => setZoom(PX_PER_DAY / 1.3));
+  const zr = document.getElementById('zoomReset'); if (zr) zr.addEventListener('click', () => setZoom(PX_DEFAULT));
 
   function addLabel(row, text, anchorPx, side){
     const l = document.createElement('div');

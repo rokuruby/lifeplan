@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
-<title>Tiong &amp; Grace Project Familia v8</title>
+<title>Tiong &amp; Grace Project Familia v9</title>
 <style>
   :root{
     --label-w: 96px;
@@ -75,6 +75,12 @@
     cursor:grab; touch-action:none; user-select:none;
   }
   .today-lbl:active{ cursor:grabbing; }
+  .today-lbl-axis{
+    position:absolute; top:2px; transform:translateX(-50%); z-index:7;
+    color:#e60000; font-weight:700; font-size:11px; white-space:nowrap;
+    background:rgba(255,255,255,.92); padding:1px 5px; border-radius:4px;
+    border:1px solid rgba(230,0,0,.35); pointer-events:none;
+  }
 
   .reset-btn{
     margin-top:6px; font:inherit; font-size:12px; font-weight:600;
@@ -110,7 +116,7 @@
 </head>
 <body>
   <header>
-    <h1>Tiong &amp; Grace Project Familia v8</h1>
+    <h1>Tiong &amp; Grace Project Familia v9</h1>
     <p class="hint">Scroll any direction — track labels stay pinned left, the month axis stays pinned at the bottom. Use the Zoom +/&minus; buttons (or pinch/Ctrl&nbsp;+&minus;) to spread out the timeline. Drag the red line to read off any date.</p>
     <button id="resetToday" class="reset-btn" type="button">Reset to today</button>
     <span style="margin-left:12px; font-size:12px; font-weight:600;">Masters scenario:</span>
@@ -120,6 +126,8 @@
       <option value="s2">2 — S3 full, S4 part-time (+1 sem)</option>
       <option value="s3">3 — S3 full, S4 deferred → full-time</option>
       <option value="s4">4 — S3 full, defer → PT + extra PT S5</option>
+      <option value="s5">5 — S3 part-time, S4 deferred → full-time</option>
+      <option value="s6">6 — Modules + research term + internship</option>
     </select>
     <span style="margin-left:12px; font-size:12px; font-weight:600;">Zoom:</span>
     <button id="zoomOut" type="button" style="font:inherit; font-size:13px; font-weight:700; padding:2px 9px; border-radius:5px; border:1px solid #bbb; background:#fff; cursor:pointer; margin-left:4px;">&minus;</button>
@@ -145,10 +153,9 @@
     { sec:'Marriage', name:'JPN notice lodged (by Fri 26 Jun → 22-day wait)', start:'2026-06-26', milestone:true },
     { sec:'Marriage', name:'JPN 22-day notice wait', start:'2026-06-26', dur:22 },
     { sec:'Marriage', name:'Plan luncheon — venue + guest list', start:'2026-06-28', dur:18 },
-    { sec:'Marriage', name:"Tell Grace's parents (Sat)", start:'2026-07-04', milestone:true },
+    { sec:'Marriage', name:"Tell Grace's parents (Sat)", start:'2026-07-11', milestone:true },
     { sec:'Marriage', name:'Hire wedding photographer', start:'2026-07-06', milestone:true },
-    { sec:'Marriage', name:'Ring shopping (tentative) — Taman Perdana, bring tripod', start:'2026-07-11', milestone:true },
-    { sec:'Marriage', name:'Both-families dinner (Sat eve)', start:'2026-07-11', milestone:true },
+    { sec:'Marriage', name:'Both-families dinner (Sat eve)', start:'2026-07-18', milestone:true },
     { sec:'Marriage', name:'Tell + invite my friends (Sun)', start:'2026-07-12', milestone:true },
     { sec:'Marriage', name:'ROM + intimate luncheon — legally married', start:'2026-07-28', milestone:true },
     { sec:'Marriage', name:'Friends wedding luncheon (Sat)', start:'2026-08-01', milestone:true },
@@ -180,12 +187,16 @@
     { sec:'House', name:'CCC issued — Cert of Completion + Compliance', start:'2027-08-15', milestone:true },
     { sec:'House', name:'Post-CCC clean + furnish + fit-out', start:'2027-08-15', dur:61 },
     { sec:'House', name:'Move into renovated house (settle slowly)', start:'2027-10-15', milestone:true },
+    { sec:'House', name:'Nymeria boarded at KL Pooch Resort', start:'2026-11-28', end:'2027-10-15' },
   ];
 
-  // ---- Masters: tasks constant across all scenarios (events + thesis chain) ----
-  const MASTERS_COMMON = [
+  // ---- Masters: indirect events — constant across ALL scenarios ----
+  const MASTERS_EVENTS = [
     { sec:'Masters', name:'Indirect event 1 — MH activity (IMU)', start:'2026-07-06', milestone:true },
     { sec:'Masters', name:'Indirect event 2 — MH screening (OUG)', start:'2026-08-01', milestone:true },
+  ];
+  // ---- Masters: generic thesis chain — default, unless a scenario sets ownResearch:true ----
+  const MASTERS_THESIS = [
     { sec:'Masters', name:'Thesis data collection + write (front-load)', start:'2026-07-01', dur:365 },
     { sec:'Masters', name:'Thesis write-up + analysis', start:'2027-04-01', dur:150 },
     { sec:'Masters', name:'Thesis submission (on track — may slip)', start:'2027-08-15', milestone:true },
@@ -235,15 +246,34 @@
       { sec:'Masters', name:'Sem 5 (part-time)', start:'2028-02-04', end:'2028-06-12' },
       { sec:'Masters', name:'Degree conferred', start:'2028-11-15', milestone:true },
     ]},
+    { key:'s5', label:'5 — S3 part-time, S4 deferred → full-time (finish ~Mar 2028)', masters:[
+      { sec:'Masters', name:'Sem 3a (part-time)', start:'2026-08-11', end:'2026-12-22' },
+      { sec:'Masters', name:'Sem 3b (part-time — overlaps birth)', start:'2027-02-04', end:'2027-06-12' },
+      { sec:'Masters', name:'Practicum (PT — stretched, overlaps birth)', start:'2026-08-17', end:'2027-06-12' },
+      { sec:'Masters', name:'Group counselling (PT — stretched)', start:'2026-08-31', end:'2027-06-12' },
+      { sec:'Masters', name:'S4 deferred — baby focus (no study)', start:'2027-06-13', end:'2027-08-10' },
+      { sec:'Masters', name:'Sem 4 (full-time, resumed Aug)', start:'2027-08-11', end:'2027-12-22' },
+      { sec:'Masters', name:'Degree conferred', start:'2028-03-15', milestone:true },
+    ]},
+    { key:'s6', label:'6 — Modules + research term + internship (finish ~late 2028)', ownResearch:true, masters:[
+      { sec:'Masters', name:'Research data collection (through end of Sem 3)', start:'2026-07-01', end:'2026-12-22' },
+      { sec:'Masters', name:'Sem 3 — MOC313 Multicultural + MOC315 Family 2', start:'2026-09-01', end:'2026-12-22' },
+      { sec:'Masters', name:'Feb term — write research report only', start:'2027-02-04', end:'2027-06-12' },
+      { sec:'Masters', name:'Presentation of research', start:'2027-08-15', milestone:true },
+      { sec:'Masters', name:'Sem 4 — MOC308 Abnormal Psych + MOC318 Practicum', start:'2027-09-01', end:'2027-12-22' },
+      { sec:'Masters', name:'Sem 5 — MOC320 Internship (full-time, ~4mo)', start:'2028-05-01', end:'2028-08-31' },
+      { sec:'Masters', name:'Degree conferred', start:'2028-11-15', milestone:true },
+    ]},
   ];
 
-  let CURRENT_SCENARIO = 'base';
+  let CURRENT_SCENARIO = 's6';
   const scenarioTasks = key => {
     const sc = SCENARIOS.find(s => s.key === key) || SCENARIOS[0];
-    return BASE_TASKS.concat(MASTERS_COMMON, sc.masters);
+    const thesis = sc.ownResearch ? [] : MASTERS_THESIS;
+    return BASE_TASKS.concat(MASTERS_EVENTS, thesis, sc.masters);
   };
   // every task across every scenario — used to fix a stable time axis so the chart doesn't jump on switch
-  const ALL_TASKS = BASE_TASKS.concat(MASTERS_COMMON, ...SCENARIOS.map(s => s.masters));
+  const ALL_TASKS = BASE_TASKS.concat(MASTERS_EVENTS, MASTERS_THESIS, ...SCENARIOS.map(s => s.masters));
 
   // ---- Time scale ----
   const DAY = 86400000;
@@ -371,6 +401,7 @@
 
   // today label (once, on the first lane body so it sits at the top)
   let todayLabelEl = null;
+  let todayLabelBottomEl = null;
   if (todayX != null && firstBody){
     todayLabelEl = document.createElement('div');
     todayLabelEl.className = 'today-lbl';
@@ -392,6 +423,13 @@
     tk.appendChild(sp);
     track.appendChild(tk);
   });
+  if (todayX != null){
+    todayLabelBottomEl = document.createElement('div');
+    todayLabelBottomEl.className = 'today-lbl-axis';
+    todayLabelBottomEl.style.left = todayX + 'px';
+    todayLabelBottomEl.textContent = todayLabel;
+    track.appendChild(todayLabelBottomEl);
+  }
   axis.appendChild(spacer); axis.appendChild(track);
   chart.appendChild(axis);
 
@@ -413,6 +451,12 @@
       if (todayLabelEl){
         todayLabelEl.style.left = centerX + 'px';
         todayLabelEl.textContent = asToday
+          ? todayLabel
+          : 'Marker – ' + fmtDate(msFromX(centerX));
+      }
+      if (todayLabelBottomEl){
+        todayLabelBottomEl.style.left = centerX + 'px';
+        todayLabelBottomEl.textContent = asToday
           ? todayLabel
           : 'Marker – ' + fmtDate(msFromX(centerX));
       }
